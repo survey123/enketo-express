@@ -12,6 +12,7 @@ var fileManager = require( './file-manager' );
 var t = require( './translator' ).t;
 var records = require( './records-queue' );
 var $ = require( 'jquery' );
+var encryptor = require( './encryptor' )
 
 var form;
 var formSelector;
