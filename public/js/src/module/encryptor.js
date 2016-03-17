@@ -19,7 +19,7 @@ var filename;
 $( '<input type="file" placeholder="encrypt"/>' ).appendTo( $( 'body' ) ).on( 'change', function() {
     console.debug( 'changed', this.files[ 0 ] );
     filename = this.files[ 0 ].name;
-    utils.blobToBinaryString( this.files[ 0 ] )
+    utils.blobToArrayBuffer( this.files[ 0 ] )
         .then( checkEncryptFeasibility )
         .catch( function( e ) {
             console.error( e, e.stack );
