@@ -71,6 +71,35 @@ function blobToArrayBuffer( blob ) {
 }
 
 /**
+ * Converts a Blob to a an binary string (non-standard? No IE Support)
+ *
+ * @param  {Blob} blob The blob
+ * @return {Promise}
+ */
+function blobToBinaryString( blob ) {
+    var reader = new FileReader();
+
+    return new Promise( function( resolve, reject ) {
+        reader.onloadend = function() {
+            resolve( reader.result );
+        };
+        reader.onerror = function( e ) {
+            reject( e );
+        };
+
+        // There is some quirky Chrome and Safari behaviour if blob is undefined or a string
+        // so we peform an additional check
+        if ( !( blob instanceof Blob ) ) {
+            reject( new Error( 'TypeError: Require Blob' ) );
+        } else {
+            reader.readAsBinaryString( blob );
+        }
+    } );
+}
+
+
+
+/**
  * The inverse of blobToDataUri, that converts a dataURL back to a Blob
  *
  * @param  {string} dataURI dataURI
@@ -222,6 +251,7 @@ function _throwInvalidXmlNodeName( name ) {
 module.exports = {
     blobToDataUri: blobToDataUri,
     blobToArrayBuffer: blobToArrayBuffer,
+    blobToBinaryString: blobToBinaryString,
     dataUriToBlob: dataUriToBlob,
     getThemeFromFormStr: getThemeFromFormStr,
     getTitleFromFormStr: getTitleFromFormStr,
