@@ -7,8 +7,6 @@ var $ = require( 'jquery' );
 //    disableNativeCode: true
 //} );
 
-//checkFeasibility();
-
 $( '<input type="file"/>' ).appendTo( $( 'body' ) ).on( 'change', function() {
     console.debug( 'changed', this.files[ 0 ] );
     utils.blobToArrayBuffer( this.files[ 0 ] )
@@ -30,7 +28,6 @@ function checkFeasibility( encryptedContent ) {
     decryptContent( encryptedContent, symmetricKey, SIGNATURE, INSTANCEID );
 }
 
-
 function decryptSymmetricKey( base64EncryptedKey, privateKeyPem ) {
     var ASYMMETRIC_ALGORITHM = 'RSA-OAEP';
     var encryptedKey = atob( base64EncryptedKey );
@@ -41,113 +38,64 @@ function decryptSymmetricKey( base64EncryptedKey, privateKeyPem ) {
 
     // need equivalent to Java's "RSA/NONE/OAEPWithSHA256AndMGF1Padding"
     var decrypted = privateKey.decrypt( encryptedKey, ASYMMETRIC_ALGORITHM, {
-        md: forge.md.sha256.create() //,
-            //mgf1: {
-            //    md: forge.md.sha1.create()
-            //}
+        md: forge.md.sha256.create()
     } );
 
     console.debug( 'decrypted symmetric key', decrypted );
     return decrypted;
 }
 
-
 function decryptContent( encryptedContent, key, base64Signature, instanceId ) {
     // need equivalent to Java's: AES/CFB/PKCS5Padding
     var SYMMETRIC_ALGORITHM = 'AES-CFB';
     var IV_BYTE_LENGTH = 16;
     // iv is the md5 hash of the instanceID and the symmetric key
-    /* var md = forge.md5.create();
-    console.log('md', md);
-    // convert to ByteString first?
-    // TODO: double-check the iv-generation!
-    console.debug('bytebuffer of instanceId',new forge.util.ByteBuffer(instanceId).getBytes() );
-    console.debug('key', key, 'in base64:', btoa(key));
-    md.update(instanceId);
-    md.update(key);
+    var md = forge.md5.create();
+    md.update( instanceId );
+    md.update( key );
     var messageDigest = md.digest().getBytes();
-    //console.debug('stirng to bytes', stringToBytes(messageDigest));
-    var ivSeedArray= [];
-    console.debug('digest',messageDigest, messageDigest.length);
-    for (var i = 0 ; i < IV_BYTE_LENGTH ; i++) {
-      var byteToReplace = messageDigest[ (i % messageDigest.length )]; 
-      var charCode = byteToReplace.charCodeAt(0);
-      var newCharCode = charCode;
-      if (charCode >= 128) {
-        // WHY? No idea...
-        newCharCode = charCode - 256;
-      }
-      ivSeedArray[i] = String.fromCharCode(newCharCode);
-      console.debug('charcode', ivSeedArray[i].charCodeAt(0));
+    var ivSeedArray = [];
+    for ( var i = 0; i < IV_BYTE_LENGTH; i++ ) {
+        ivSeedArray[ i ] = messageDigest[ ( i % messageDigest.length ) ];
     }
-*/
-    /*var array = [110,-35,87,120,-90,-42,-121,80,87,-19,-94,-1,-61,69,-72,31];
-    ++array[2];
-    console.log('array of codes after replacing', array);
-    ivSeedArray.map(function(code){
-        return String.fromCharCode(code);
-    })*/
 
-    // ++ messageDigest for each file? the submission.xml is the last!
-    //incrementByteAt(ivSeedArray, 0);
+    // ++ messageDigest for each file in order. The submission.xml is the last!
+    _incrementByteAt( ivSeedArray, 0 );
+    _incrementByteAt( ivSeedArray, 1 );
+    _incrementByteAt( ivSeedArray, 2 );
+    _incrementByteAt( ivSeedArray, 3 );
 
-    // var iv = ivSeedArray.join('');
+    var iv = ivSeedArray.join( '' );
 
-    var ivs = [];
+    // 'b95YeKbWh1BX7aL/w0W4Hw==', // index 0,1,2
+    // 'b95YeabWh1BX7aL/w0W4Hw==', // index 0,1,2,3
 
-    [
-        //'bt1XeKbWh1BX7aL/w0W4Hw==', // no incrementing
-        //        'b91XeKbWh1BX7aL/w0W4Hw==', // index 0
-        //        'bt5XeKbWh1BX7aL/w0W4Hw==', // index 1
-        //        'bt1YeKbWh1BX7aL/w0W4Hw==', // index 2
-        //        'bt1XeabWh1BX7aL/w0W4Hw==', // index 3
-        //        'bt1XeKfWh1BX7aL/w0W4Hw==', // index 4
-        //'bt1XeKbXh1BX7aL/w0W4Hw==', // index 5
-        //'b95YeKbWh1BX7aL/w0W4Hw==', // index 0,1,2
-        'b95YeabWh1BX7aL/w0W4Hw==', // index 0,1,2,3
-    ].forEach( function( base64 ) {
-        ivs.push( atob( base64 ) );
-        //ivs.push( decode( base64 ) );
-        //ivs.push( forge.util.binary.base64.decode( base64 ) );
-    } );
     var signature = atob( base64Signature );
-
-    console.debug( 'ivs', ivs );
 
     encryptedContent = new forge.util.ByteBuffer( encryptedContent ).getBytes();
 
-    ivs.forEach( function( ivbase ) {
-        //console.debug( 'iv', iv );
-        var encryptedContentBuffer = new forge.util.ByteBuffer( encryptedContent );
-        console.debug( 'length of content', encryptedContentBuffer.length() );
-        var iv = new forge.util.ByteBuffer( ivbase ).getBytes( 16 );
-        //var firstBlock = encryptedContentBuffer.getBytes( 16 ); // this actually *removes* the first 16 bytes!
-        console.debug( 'length of content', encryptedContentBuffer.length() );
-        console.debug( 'iv:', iv );
-        var decipher = forge.cipher.createDecipher( SYMMETRIC_ALGORITHM, key );
+    var encryptedContentBuffer = new forge.util.ByteBuffer( encryptedContent );
+    var decipher = forge.cipher.createDecipher( SYMMETRIC_ALGORITHM, key );
 
-        decipher.start( {
-            iv: iv,
-            blockSize: 16
-        } );
-
-        decipher.update( encryptedContentBuffer );
-
-        var pass = decipher.finish();
-        var outputString = decipher.output.getBytes();
-        if ( outputString.substring( 0, 1 ) === '<' ) {
-            console.log( 'WHOHHOHOHOHOHHOOOOOOOOO' );
-            //window.alert( 'yay!, iv "' + iv + ' works!' );
-        }
-        console.debug( 'pass', pass );
-        console.debug( 'output', outputString );
+    decipher.start( {
+        iv: iv,
+        blockSize: 16
     } );
+
+    decipher.update( encryptedContentBuffer );
+
+    var pass = decipher.finish();
+    var outputString = decipher.output.getBytes();
+    if ( outputString.substring( 0, 1 ) !== '<' ) {
+        console.error( 'output sucks!' );
+    }
+    console.debug( 'pass', pass );
+    console.debug( 'output', outputString );
 }
 
-function incrementByteAt( arr, index ) {
+function _incrementByteAt( arr, index ) {
     var charCode = arr[ index ].charCodeAt( 0 );
     var replacement = String.fromCharCode( charCode + 1 );
-    arr[ index ] = replacement;
-    console.debug( 'replaced', arr );
+    arr[ index ] = replacement;;
     return arr;
 }
