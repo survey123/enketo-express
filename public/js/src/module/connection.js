@@ -338,6 +338,9 @@ function getFormParts( props ) {
                 }
             } )
             .done( function( data ) {
+                if ( typeof data === 'string' ) {
+                    data = JSON.parse( data );
+                }
                 data.enketoId = props.enketoId;
                 _getExternalData( data )
                     .then( resolve )

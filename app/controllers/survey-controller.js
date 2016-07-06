@@ -16,7 +16,7 @@ module.exports = function( app ) {
 
 // duplicate in submission-controller
 router.param( 'enketo_id', function( req, res, next, id ) {
-    if ( /^::[A-z0-9]{4,8}$/.test( id ) ) {
+    if ( /^::[A-z0-9]{16,32}$/.test( id ) ) {
         req.enketoId = id.substring( 2 );
         next();
     } else {
